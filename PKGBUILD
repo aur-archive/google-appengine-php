@@ -1,0 +1,62 @@
+# Maintainer: Eric Schultz eric at schultzter dot ca
+# Inspired by (i.e.: copied almost verbatim) xyproto's google-appengine-go package, so buy him a beer!
+# 2014-03-02 source URL changed
+
+# NOTES
+# Use makepkg -g to generate the md5sums line after updating pkgver 
+# Use makepkg -ic to make the package, install it, and clean-up
+# Use makepkg -S to make tarball for uploading to AUR
+
+pkgname=google-appengine-php
+pkgver=1.9.0
+pkgrel=1
+pkgdesc='Google App Engine SDK for PHP'
+arch=('any')
+depends=('python2' 'php-cgi' 'mysql')
+url='http://developers.google.com/appengine/docs/php/gettingstarted'
+license=('custom')
+options=('!strip')
+noextract=("google_appengine_${pkgver}.zip")
+makedepends=('unzip')
+
+source=("http://commondatastorage.googleapis.com/appengine-sdks/featured/google_appengine_${pkgver}.zip" "google-appengine-php.ini")
+md5sums=('16ceba9efea32b9c3e54c1cd2b1f7ab4' '08129bec68fece5a6fa685b7ad32fb25')
+
+prepare() {
+  cd "$srcdir"
+
+  unzip -q "google_appengine_${pkgver}.zip"
+}
+
+build() {
+  cd "$srcdir/google_appengine"
+
+  msg2 'Correcting file permissions (Only make the .py files executable)...'
+  find . -type f -exec chmod 644 '{}' \;
+  chmod +x *.py
+  
+  for f in *.py
+  do
+    msg2 "Modifying script to use Python 2 $f ..."
+	  sed -i '0,/on/s//on2/' $f
+  done
+}
+
+package() {
+  cd "$srcdir/google_appengine"
+
+  msg2 'Packaging files...'
+  mkdir "$pkgdir/opt"
+  cp -R "./" "$pkgdir/opt/$pkgname"
+
+  msg2 'Cleaning up deprecated files...'
+  rm -r "$pkgdir/opt/$pkgname/tools"
+
+  msg2 'Packaging license...'
+  install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  # "TODO: A PHP ninja will hopefully recommend a more effective way of doing this!"
+  msg2 "Configure PHP to run properly with GAE..."
+  cd "$srcdir"
+  install -Dm644 "google-appengine-php.ini" "$pkgdir/etc/php/conf.d/google-appengine-php.ini"
+}
